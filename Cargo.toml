@@ -1,0 +1,14 @@
+[package]
+name = "ic_identity_kms"
+description = "Identity on Internet Computer integrated with AWS KMS"
+homepage = "https://githum.com/horizonx-tech/ic-identity-kms-rs"
+readme = "README.md"
+categories = ["kms", "identity", "internet-computer", "icp", "aws"]
+edition = "2021"
+
+[dependencies]
+aws-sdk-kms = "1.13.0"
+futures = "0.3.30"
+ic-agent = "0.33.0"
+k256 = "0.13.3"
+
