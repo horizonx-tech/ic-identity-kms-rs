@@ -11,5 +11,5 @@ version = "0.1.0"
 async-trait = "0.1.77"
 aws-config = "1.1.5"
 aws-sdk-kms = "1.13.0"
-ic-agent = { git = "https://github.com/hide-yoshi/agent-rs" }
+ic-agent = { git = "https://github.com/hide-yoshi/agent-rs", version = "0.33.0" }
 tokio = { version = "1", features = ["full"] }
