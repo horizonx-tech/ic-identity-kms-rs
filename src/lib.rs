@@ -2,7 +2,10 @@ extern crate aws_sdk_kms;
 extern crate ic_agent;
 
 use async_trait::async_trait;
-use aws_sdk_kms::{primitives::Blob, types::SigningAlgorithmSpec, Client};
+use aws_sdk_kms::{
+    error::SdkError, operation::get_public_key::GetPublicKeyError, primitives::Blob,
+    types::SigningAlgorithmSpec, Client,
+};
 use ic_agent::{export::Principal, Identity, Signature};
 
 #[derive(Clone)]
@@ -13,22 +16,21 @@ pub struct KmsIdentity {
 }
 
 impl KmsIdentity {
-    pub async fn new(client: Client, key_id: String) -> Self {
+    pub async fn new(client: Client, key_id: String) -> Result<Self, SdkError<GetPublicKeyError>> {
         let public_key = client
             .get_public_key()
             .key_id(key_id.clone())
             .send()
-            .await
-            .unwrap()
+            .await?
             .public_key
             .unwrap()
             .as_ref()
             .to_vec();
-        KmsIdentity {
+        Ok(KmsIdentity {
             client,
             key_id,
             public_key,
-        }
+        })
     }
 }
 
@@ -74,13 +76,12 @@ mod tests {
     //use super::*;
     //use aws_config::BehaviorVersion;
     //use aws_sdk_kms::Client;
-    //use ic_agent::agent::EnvelopeContent;
-
+    //use ic_agent::agent::EnvelopeContent
     //#[tokio::test]
     //async fn test_kms_identity() {
     //    let client: Client =
     //        Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await;
+    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await.unwrap();
     //    let pub_key = identity.public_key().unwrap();
     //    println!("{:?}", pub_key);
     //}
@@ -88,7 +89,7 @@ mod tests {
     //async fn test_sender() {
     //    let client: Client =
     //        Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await;
+    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await.unwrap();
     //    let sender = identity.sender().unwrap();
     //    println!("{:?}", sender.to_string());
     //}
@@ -104,7 +105,7 @@ mod tests {
     //async fn test_sign() {
     //    let client: Client =
     //        Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await;
+    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await.unwrap();
     //    let content = identity
     //        .sign(&EnvelopeContent::Call {
     //            nonce: None,
