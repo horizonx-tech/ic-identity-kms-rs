@@ -71,7 +71,7 @@ impl Identity for KmsIdentity {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
+    //use super::*;
     //use aws_config::BehaviorVersion;
     //use aws_sdk_kms::Client;
     //use ic_agent::agent::EnvelopeContent;
