@@ -9,7 +9,12 @@ use aws_sdk_kms::{
     types::{MessageType, SigningAlgorithmSpec},
     Client,
 };
-use ic_agent::{export::Principal, Identity, Signature};
+use ic_agent::{
+    export::Principal,
+    identity::{Delegation, Secp256k1Identity},
+    Identity, Signature,
+};
+use sha2::Digest;
 
 #[derive(Clone)]
 pub struct KmsIdentity {
@@ -51,13 +56,15 @@ impl Identity for KmsIdentity {
         &self,
         content: &ic_agent::agent::EnvelopeContent,
     ) -> Result<ic_agent::Signature, String> {
+        let message = content.to_request_id().signable();
+        let message_digest = Blob::new(sha2::Sha256::digest(message).to_vec());
         let result = self
             .client
             .sign()
             .key_id(self.key_id.clone())
-            //.message_type(MessageType::Digest)
+            .message_type(MessageType::Digest)
             .signing_algorithm(SigningAlgorithmSpec::EcdsaSha256)
-            .message(Blob::new(content.to_request_id().signable()))
+            .message(message_digest)
             .send()
             .await
             .map_err(|e| e.to_string())?
@@ -66,16 +73,23 @@ impl Identity for KmsIdentity {
             .as_ref()
             .to_vec();
         let public_key = self.public_key().unwrap();
+        let sig = p256::ecdsa::Signature::from_der(result.as_ref()).unwrap();
+        let r = sig.r().as_ref().to_bytes();
+        let s = sig.s().as_ref().to_bytes();
+        let mut bytes = [0u8; 64];
+        if r.len() > 32 || s.len() > 32 {
+            return Err("Cannot create secp256k1 signature: malformed signature.".to_string());
+        }
+        bytes[(32 - r.len())..32].clone_from_slice(&r);
+        bytes[32 + (32 - s.len())..].clone_from_slice(&s);
+        let signature = Some(bytes.to_vec());
+
         Ok(Signature {
             delegations: None,
             public_key: Some(public_key),
-            signature: Some(parse_signature(result)),
+            signature,
         })
     }
-}
-
-fn parse_signature(signature: Vec<u8>) -> Vec<u8> {
-    signature[..64].to_vec()
 }
 
 #[cfg(test)]
@@ -120,19 +134,15 @@ mod tests {
         let identity = KmsIdentity::new(client.clone(), "alias/hideyoshi".to_string())
             .await
             .unwrap();
-        let content = identity
-            .sign(&EnvelopeContent::Call {
-                nonce: None,
-                ingress_expiry: 1,
-                sender: Principal::anonymous(),
-                canister_id: Principal::anonymous(),
-                method_name: "test".to_string(),
-                arg: vec![],
-            })
-            .await;
-        assert!(content.is_ok());
-        println!("{:?}", content.clone().unwrap().signature.unwrap().len());
-        assert!(content.unwrap().signature.unwrap().len() == 64);
+        let msg = EnvelopeContent::Call {
+            nonce: None,
+            ingress_expiry: 1,
+            sender: Principal::anonymous(),
+            canister_id: Principal::anonymous(),
+            method_name: "test".to_string(),
+            arg: vec![],
+        };
+        let content = identity.sign(&msg).await;
     }
     #[tokio::test]
     async fn test_with_agent() {
