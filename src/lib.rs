@@ -3,8 +3,11 @@ extern crate ic_agent;
 
 use async_trait::async_trait;
 use aws_sdk_kms::{
-    error::SdkError, operation::get_public_key::GetPublicKeyError, primitives::Blob,
-    types::SigningAlgorithmSpec, Client,
+    error::SdkError,
+    operation::get_public_key::GetPublicKeyError,
+    primitives::Blob,
+    types::{MessageType, SigningAlgorithmSpec},
+    Client,
 };
 use ic_agent::{export::Principal, Identity, Signature};
 
@@ -52,6 +55,7 @@ impl Identity for KmsIdentity {
             .client
             .sign()
             .key_id(self.key_id.clone())
+            //.message_type(MessageType::Digest)
             .signing_algorithm(SigningAlgorithmSpec::EcdsaSha256)
             .message(Blob::new(content.to_request_id().signable()))
             .send()
@@ -59,15 +63,19 @@ impl Identity for KmsIdentity {
             .map_err(|e| e.to_string())?
             .signature()
             .unwrap()
-            .as_ref()[..64]
+            .as_ref()
             .to_vec();
         let public_key = self.public_key().unwrap();
         Ok(Signature {
             delegations: None,
             public_key: Some(public_key),
-            signature: Some(result),
+            signature: Some(parse_signature(result)),
         })
     }
+}
+
+fn parse_signature(signature: Vec<u8>) -> Vec<u8> {
+    signature[..64].to_vec()
 }
 
 #[cfg(test)]
@@ -109,7 +117,7 @@ mod tests {
     async fn test_sign() {
         let client: Client =
             Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-        let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string())
+        let identity = KmsIdentity::new(client.clone(), "alias/hideyoshi".to_string())
             .await
             .unwrap();
         let content = identity
@@ -123,6 +131,8 @@ mod tests {
             })
             .await;
         assert!(content.is_ok());
+        println!("{:?}", content.clone().unwrap().signature.unwrap().len());
+        assert!(content.unwrap().signature.unwrap().len() == 64);
     }
     #[tokio::test]
     async fn test_with_agent() {
