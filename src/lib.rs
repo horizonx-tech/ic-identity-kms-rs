@@ -59,7 +59,7 @@ impl Identity for KmsIdentity {
             .map_err(|e| e.to_string())?
             .signature()
             .unwrap()
-            .as_ref()
+            .as_ref()[..64]
             .to_vec();
         let public_key = self.public_key().unwrap();
         Ok(Signature {
@@ -73,49 +73,68 @@ impl Identity for KmsIdentity {
 #[cfg(test)]
 mod tests {
 
-    //use super::*;
-    //use aws_config::BehaviorVersion;
-    //use aws_sdk_kms::Client;
-    //use ic_agent::agent::EnvelopeContent
-    //#[tokio::test]
-    //async fn test_kms_identity() {
-    //    let client: Client =
-    //        Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await.unwrap();
-    //    let pub_key = identity.public_key().unwrap();
-    //    println!("{:?}", pub_key);
-    //}
-    //#[tokio::test]
-    //async fn test_sender() {
-    //    let client: Client =
-    //        Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await.unwrap();
-    //    let sender = identity.sender().unwrap();
-    //    println!("{:?}", sender.to_string());
-    //}
-    //
-    //#[tokio::test]
-    //async fn test_new() {
-    //    let client: Client =
-    //        Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-    //    KmsIdentity::new(client.clone(), "alias/tt".to_string()).await;
-    //}
-    //
-    //#[tokio::test]
-    //async fn test_sign() {
-    //    let client: Client =
-    //        Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-    //    let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string()).await.unwrap();
-    //    let content = identity
-    //        .sign(&EnvelopeContent::Call {
-    //            nonce: None,
-    //            ingress_expiry: 1,
-    //            sender: Principal::anonymous(),
-    //            canister_id: Principal::anonymous(),
-    //            method_name: "test".to_string(),
-    //            arg: vec![],
-    //        })
-    //        .await;
-    //    assert!(content.is_ok());
-    //}
+    use super::*;
+    use aws_config::BehaviorVersion;
+    use aws_sdk_kms::Client;
+    use ic_agent::agent::EnvelopeContent;
+    #[tokio::test]
+    async fn test_kms_identity() {
+        let client: Client =
+            Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
+        let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string())
+            .await
+            .unwrap();
+        let pub_key = identity.public_key().unwrap();
+        println!("{:?}", pub_key);
+    }
+    #[tokio::test]
+    async fn test_sender() {
+        let client: Client =
+            Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
+        let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string())
+            .await
+            .unwrap();
+        let sender = identity.sender().unwrap();
+        println!("{:?}", sender.to_string());
+    }
+
+    #[tokio::test]
+    async fn test_new() {
+        let client: Client =
+            Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
+        KmsIdentity::new(client.clone(), "alias/tt".to_string()).await;
+    }
+
+    #[tokio::test]
+    async fn test_sign() {
+        let client: Client =
+            Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
+        let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string())
+            .await
+            .unwrap();
+        let content = identity
+            .sign(&EnvelopeContent::Call {
+                nonce: None,
+                ingress_expiry: 1,
+                sender: Principal::anonymous(),
+                canister_id: Principal::anonymous(),
+                method_name: "test".to_string(),
+                arg: vec![],
+            })
+            .await;
+        assert!(content.is_ok());
+    }
+    #[tokio::test]
+    async fn test_with_agent() {
+        let client: Client =
+            Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
+        let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string())
+            .await
+            .unwrap();
+        let agent = ic_agent::Agent::builder()
+            .with_url("https://ic0.app")
+            .with_identity(identity)
+            .build()
+            .unwrap();
+    }
 }
