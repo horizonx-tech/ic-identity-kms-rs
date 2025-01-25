@@ -9,11 +9,7 @@ use aws_sdk_kms::{
     types::{MessageType, SigningAlgorithmSpec},
     Client,
 };
-use ic_agent::{
-    export::Principal,
-    identity::{Delegation, Secp256k1Identity},
-    Identity, Signature,
-};
+use ic_agent::{export::Principal, Identity, Signature};
 use sha2::Digest;
 
 #[derive(Clone)]
@@ -124,7 +120,9 @@ mod tests {
     async fn test_new() {
         let client: Client =
             Client::new(&aws_config::defaults(BehaviorVersion::latest()).load().await);
-        KmsIdentity::new(client.clone(), "alias/tt".to_string()).await;
+        KmsIdentity::new(client.clone(), "alias/tt".to_string())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -142,7 +140,7 @@ mod tests {
             method_name: "test".to_string(),
             arg: vec![],
         };
-        let content = identity.sign(&msg).await;
+        let _ = identity.sign(&msg).await.unwrap();
     }
     #[tokio::test]
     async fn test_with_agent() {
@@ -151,7 +149,7 @@ mod tests {
         let identity = KmsIdentity::new(client.clone(), "alias/tt".to_string())
             .await
             .unwrap();
-        let agent = ic_agent::Agent::builder()
+        let _ = ic_agent::Agent::builder()
             .with_url("https://ic0.app")
             .with_identity(identity)
             .build()
