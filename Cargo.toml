@@ -12,7 +12,7 @@ async-trait = "0.1.85"
 aws-config = "1.1.5"
 aws-sdk-kms = "1.13.0"
 ecdsa = "0.16.9"
-ic-agent = { git = "https://github.com/horizonx-tech/agent-rs", branch = "release/0.39.3" }
+ic-agent = { git = "https://github.com/horizonx-tech/agent-rs", branch = "release/0.45.0" }
 p256 = "0.13.2"
 sha2 = "0.10.8"
 sha256 = "1.5.0"
